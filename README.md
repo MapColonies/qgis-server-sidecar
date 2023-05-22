@@ -1,6 +1,6 @@
 # qgis-server-sidecar
 
-This is a sidecar container to reload QGIS Server data from S3.
+This is a sidecar container to load QGIS Server data from S3
 
 ## Run
 ```
