@@ -8,6 +8,8 @@ const CURRENT_STATE_FILE = path.join(DATA_DIR, 'state.json');
 
 const pollingInterval = +(process.env.POLLING_INTERVAL ?? 1000); // in milliseconds
 const logger = jsLogger.default({ level: process.env.LOG_LEVEL ?? 'info' }); // ['debug', 'info', 'warn', 'error', 'fatal']
+const entities = JSON.parse(process.env.ENTITIES ?? '[]') ?? ['dtm','dsm'];
+logger.debug({ entities });
 
 $.shell = '/bin/bash';
 $.verbose = false;
@@ -20,7 +22,7 @@ const parse = (state) => state.reduce((parsedState, project) => {
       size,
       lastModified
     }
-  })
+  });
 }, {});
 
 const generateChecksum = (str, algorithm, encoding) => {
@@ -30,13 +32,15 @@ const generateChecksum = (str, algorithm, encoding) => {
     .digest(encoding || 'hex');
 };
 
-const getRemoteState = async () => {
+const getRemoteState = async (prefix) => {
   const args = [
     `list-objects`,
     `--endpoint-url`,
     process.env.AWS_ENDPOINT_URL,
     `--bucket`,
     process.env.AWS_BUCKET_NAME,
+    `--prefix`,
+    prefix,
     `--query`,
     `Contents[?contains(@.Key, \`qgs\`) == \`true\`].{key: Key, size: Size, lastModified: LastModified}`
   ];
@@ -64,9 +68,14 @@ const syncDataDir = async () => {
 
   try {
     logger.debug({ msg: 'Getting state from storage', bucket: process.env.AWS_BUCKET_NAME });
-    const remoteState = (await getRemoteState()).stdout.trim();
-    logger.debug({ remoteState });
-    const parsedRemoteState = parse(JSON.parse(remoteState));
+    const remoteState = [];
+
+    for (let i = 0; i < entities.length; i++) {
+      const entityState = (await getRemoteState(entities[i])).stdout.trim();
+      remoteState.push(...JSON.parse(entityState));
+    }
+
+    const parsedRemoteState = parse(remoteState);
     logger.debug({ parsedRemoteState });
 
     let currentState = '{}';
