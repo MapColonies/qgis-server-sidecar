@@ -8,8 +8,8 @@ const CURRENT_STATE_FILE = path.join(DATA_DIR, 'state.json');
 
 const pollingInterval = +(process.env.POLLING_INTERVAL ?? 1000); // in milliseconds
 const logger = jsLogger.default({ level: process.env.LOG_LEVEL ?? 'info' }); // ['debug', 'info', 'warn', 'error', 'fatal']
-const entities = JSON.parse(process.env.ENTITIES ?? '[]') ?? ['dtm','dsm'];
-logger.debug({ entities });
+const productTypes = JSON.parse(process.env.PRODUCT_TYPES ?? '[]') ?? ['dtm','dsm'];
+logger.debug({ productTypes });
 
 $.shell = '/bin/bash';
 $.verbose = false;
@@ -69,12 +69,10 @@ const syncDataDir = async () => {
   try {
     logger.debug({ msg: 'Getting state from storage', bucket: process.env.AWS_BUCKET_NAME });
     const remoteState = [];
-
-    for (let i = 0; i < entities.length; i++) {
-      const entityState = (await getRemoteState(entities[i])).stdout.trim();
-      remoteState.push(...JSON.parse(entityState));
+    for (let i = 0; i < productTypes.length; i++) {
+      const productTypeState = (await getRemoteState(productTypes[i])).stdout.trim();
+      remoteState.push(...JSON.parse(productTypeState));
     }
-
     const parsedRemoteState = parse(remoteState);
     logger.debug({ parsedRemoteState });
 
