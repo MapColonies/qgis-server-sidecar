@@ -129,7 +129,7 @@ const syncDataDir = async () => {
           if (syncStatus?.stdout.trim().includes('download:')) {
             try {
               if (fs.existsSync(path.join(DATA_DIR, projectToSync))) {
-                await $`sed -i 's,{RAW_DATA_PROXY_URL},${process.env.RAW_DATA_PROXY_URL},g' ${DATA_DIR}/${projectToSync}`;
+                await $`sed -i 's,{AWS_BUCKET_NAME},${process.env.AWS_BUCKET_NAME},g; s,{RAW_DATA_PROXY_URL},${process.env.RAW_DATA_PROXY_URL},g' ${DATA_DIR}/${projectToSync}`;
                 logger.info({ msg: 'Synced', project: projectToSync });
                 resolve();
               } else {
