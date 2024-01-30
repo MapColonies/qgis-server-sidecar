@@ -7,12 +7,21 @@ const DATA_DIR = '/io/data';
 const CURRENT_STATE_FILE = path.join(DATA_DIR, 'state.json');
 
 const pollingInterval = +(process.env.POLLING_INTERVAL ?? 1000); // in milliseconds
-const logger = jsLogger.default({ level: process.env.LOG_LEVEL ?? 'info' }); // ['debug', 'info', 'warn', 'error', 'fatal']
-const productTypes = JSON.parse(process.env.PRODUCT_TYPES ?? '[]') ?? ['dtm','dsm'];
-logger.debug({ productTypes });
+const logger = jsLogger.default({ level: process.env.LOG_LEVEL ?? 'debug' }); // ['debug', 'info', 'warn', 'error', 'fatal']
+const productTypesFromConf = JSON.parse(process.env.PRODUCT_TYPES ?? '["dtm","dsm"]');
 
 $.shell = '/bin/bash';
 $.verbose = false;
+
+const getProductTypes = async () => {
+  const args = [
+    `ls`,
+    `--endpoint-url`,
+    process.env.AWS_ENDPOINT_URL,
+    `s3://${process.env.AWS_BUCKET_NAME}`
+  ];
+  return $`aws s3 ${args}`;
+};
 
 const parse = (state) => state.reduce((parsedState, project) => {
   const { key, size, lastModified } = project;
@@ -60,7 +69,7 @@ const syncProject = async (projectPath) => {
     `s3://${process.env.AWS_BUCKET_NAME}/${projectDir}`,
     `${DATA_DIR}/${projectDir}`,
     `--recursive`
-  ]
+  ];
   return $`aws s3 ${args}`;
 };
 
@@ -68,6 +77,13 @@ const syncDataDir = async () => {
 
   try {
     logger.debug({ msg: 'Getting state from storage', bucket: process.env.AWS_BUCKET_NAME });
+
+    logger.debug({ productTypesFromConf });
+    const productTypesInS3 = (await getProductTypes()).stdout.trim().split('\n').filter(item => item.endsWith('/')).map(item => item.replace(/^\s*PRE\s+|\/$/g, ''));
+    logger.debug({ productTypesInS3 });
+    const productTypes = productTypesFromConf.filter(item => productTypesInS3.includes(item));
+    logger.debug({ productTypes });
+
     const remoteState = [];
     for (let i = 0; i < productTypes.length; i++) {
       const productTypeState = (await getRemoteState(productTypes[i])).stdout.trim();
